@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+eval_report*.json
+mlruns/
+.pytest_cache/
+.venv/

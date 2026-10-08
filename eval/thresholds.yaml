@@ -1,0 +1,6 @@
+# Release gate. CI fails (no deploy) if any is breached.
+emergency_recall_min: 1.0     # must catch every emergency — non-negotiable
+urgent_or_higher_recall_min: 0.95   # under-triage of clinical issues
+accuracy_min: 0.85
+avg_cost_usd_max: 0.002
+p95_latency_ms_max: 3000

@@ -1,0 +1,59 @@
+# Local minikube overlay: same Rollout / analysis / HPA as EKS, minus AWS-only pieces
+# (ECR, IRSA, ALB, Karpenter, Bedrock, S3). Apply with: kubectl apply -k k8s-minikube
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../k8s
+  - local.yaml
+
+images:
+  - name: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/medtriage
+    newName: medtriage
+    newTag: local
+
+patches:
+  # Offline mock LLM, no AWS credentials needed.
+  - target: {kind: ConfigMap, name: medtriage-config}
+    patch: |-
+      - {op: replace, path: /data/APP_ENV, value: dev}
+      - {op: replace, path: /data/LLM_PROVIDER, value: mock}
+      - {op: replace, path: /data/SMALL_MODEL_ID, value: claude-haiku-5-5}
+      - {op: replace, path: /data/LARGE_MODEL_ID, value: claude-sonnet-5-5}
+  # No IRSA locally.
+  - target: {kind: ServiceAccount, name: medtriage}
+    patch: |-
+      - {op: remove, path: /metadata/annotations}
+  # Use the image built inside minikube; replica-based canary (no ALB); short pauses for demos.
+  - target: {kind: Rollout, name: medtriage}
+    patch: |-
+      - {op: add, path: /spec/template/spec/containers/0/imagePullPolicy, value: Never}
+      - {op: remove, path: /spec/strategy/canary/trafficRouting}
+      - op: replace
+        path: /spec/strategy/canary/steps
+        value:
+          - setWeight: 10
+          - pause: {duration: 1m}
+          - analysis: {templates: [{templateName: triage-canary-health}]}
+          - setWeight: 50
+          - pause: {duration: 1m}
+          - analysis: {templates: [{templateName: triage-canary-health}]}
+          - setWeight: 100
+  # MLflow artifacts on local disk instead of S3.
+  - target: {kind: Deployment, name: mlflow}
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000",
+                "--backend-store-uri", "sqlite:////mlflow/mlflow.db",
+                "--artifacts-destination", "/mlflow/artifacts"]
+  # AWS-only resources.
+  - patch: |-
+      $patch: delete
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata: {name: medtriage, namespace: medtriage}
+  - patch: |-
+      $patch: delete
+      apiVersion: karpenter.sh/v1
+      kind: NodePool
+      metadata: {name: medtriage-general}

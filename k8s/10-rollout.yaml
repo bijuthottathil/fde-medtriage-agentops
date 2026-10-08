@@ -1,0 +1,81 @@
+# Canary deployment with Argo Rollouts: 10% -> analysis -> 50% -> analysis -> 100%.
+# If the AnalysisTemplate fails, Argo automatically ROLLS BACK to the stable ReplicaSet.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: medtriage
+  namespace: medtriage
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5            # keeps old versions around for instant rollback
+  selector:
+    matchLabels: {app: medtriage}
+  template:
+    metadata:
+      labels: {app: medtriage}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics/"
+    spec:
+      serviceAccountName: medtriage
+      containers:
+        - name: app
+          image: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/medtriage:IMAGE_TAG
+          ports: [{containerPort: 8080}]
+          envFrom: [{configMapRef: {name: medtriage-config}}]
+          resources:
+            requests: {cpu: 250m, memory: 256Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          readinessProbe: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 15}
+          securityContext: {runAsNonRoot: true, readOnlyRootFilesystem: true, allowPrivilegeEscalation: false}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes: [{name: tmp, emptyDir: {}}]
+  strategy:
+    canary:
+      canaryService: medtriage-canary
+      stableService: medtriage-stable
+      trafficRouting:
+        alb:
+          ingress: medtriage
+          servicePort: 80
+      steps:
+        - setWeight: 10
+        - pause: {duration: 5m}
+        - analysis: {templates: [{templateName: triage-canary-health}]}
+        - setWeight: 50
+        - pause: {duration: 10m}
+        - analysis: {templates: [{templateName: triage-canary-health}]}
+        - setWeight: 100
+---
+apiVersion: v1
+kind: Service
+metadata: {name: medtriage-stable, namespace: medtriage}
+spec:
+  selector: {app: medtriage}
+  ports: [{port: 80, targetPort: 8080}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: medtriage-canary, namespace: medtriage}
+spec:
+  selector: {app: medtriage}
+  ports: [{port: 80, targetPort: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: medtriage
+  namespace: medtriage
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal      # PHI: no public endpoint
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: medtriage-stable, port: {name: use-annotation}}}

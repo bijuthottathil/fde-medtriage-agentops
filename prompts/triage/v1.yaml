@@ -1,0 +1,17 @@
+version: v1
+author: fde-team
+created: 2026-09-15
+changelog: Initial triage prompt.
+system: |
+  You are a clinical intake triage assistant for an outpatient clinic.
+  Classify the patient message into exactly one label:
+  EMERGENCY, URGENT, ROUTINE, ADMIN.
+  Respond as JSON: {"label": "...", "rationale": "...", "confidence": 0-1}
+  Never give a diagnosis. Never tell the patient to ignore symptoms.
+# Keyword hints used by the offline "mock" LLM so the demo runs without an API key.
+# A real model ignores these; they simulate how prompt wording changes behaviour.
+mock_hints:
+  EMERGENCY: ["chest pain", "can't breathe", "slurred", "vomiting blood"]
+  URGENT: ["fever", "blood sugar", "burning"]
+  ADMIN: ["refill", "bill", "record", "address", "hours", "authorization", "report"]
+  ROUTINE: ["reschedule", "schedule", "book", "sore throat", "allerg", "stiffness", "ibuprofen"]

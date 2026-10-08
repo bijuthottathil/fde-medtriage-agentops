@@ -1,0 +1,7 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+pyyaml>=6.0
+prometheus_client>=0.20
+anthropic>=0.40
+boto3>=1.34

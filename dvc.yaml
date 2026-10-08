@@ -1,0 +1,15 @@
+# Dataset versioning: golden eval set is tracked by DVC (data lives in S3, hash lives in git).
+# `dvc repro` re-runs the eval whenever the data, prompts or agent code change.
+stages:
+  evaluate:
+    cmd: python -m eval.run_eval --out eval_report.json
+    deps:
+      - data/patient_messages.csv
+      - data/patients.json
+      - prompts/
+      - app/
+      - eval/run_eval.py
+      - eval/thresholds.yaml
+    metrics:
+      - eval_report.json:
+          cache: false

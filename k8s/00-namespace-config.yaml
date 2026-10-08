@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: medtriage
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: medtriage-config
+  namespace: medtriage
+data:
+  APP_ENV: "prod"
+  LLM_PROVIDER: "bedrock"            # or "anthropic" (needs Secret below) / "mock"
+  SMALL_MODEL_ID: "REPLACE-with-bedrock-haiku-inference-profile-id"
+  LARGE_MODEL_ID: "REPLACE-with-bedrock-sonnet-inference-profile-id"
+  ESCALATE_BELOW_CONFIDENCE: "0.7"
+  AWS_REGION: "us-east-1"
+---
+# IRSA / Pod Identity: pod gets bedrock:InvokeModel without static keys.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: medtriage
+  namespace: medtriage
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/medtriage-bedrock-invoke

@@ -1,0 +1,9 @@
+# Base = the EKS manifests. Overlays patch only what differs per environment.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - 00-namespace-config.yaml
+  - 10-rollout.yaml
+  - 20-analysis.yaml
+  - 30-autoscaling.yaml
+  - 40-mlflow.yaml

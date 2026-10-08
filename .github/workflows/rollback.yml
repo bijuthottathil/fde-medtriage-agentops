@@ -1,0 +1,26 @@
+# One-click manual rollback (Argo also rolls back automatically on failed canary analysis).
+name: rollback
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: "Rollout revision to go back to (blank = previous)"
+        required: false
+
+permissions: {id-token: write, contents: read}
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - run: |
+          curl -sLO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+          chmod +x kubectl-argo-rollouts-linux-amd64 && sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+          aws eks update-kubeconfig --name medtriage-eks --region us-east-1
+          ./scripts/rollback.sh "${{ inputs.revision }}"

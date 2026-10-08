@@ -1,0 +1,56 @@
+# Service over ALL app pods (stable + canary). Without an ALB, Argo's basic canary splits
+# traffic by pod count, so this is the entry point that shows the real mix.
+apiVersion: v1
+kind: Service
+metadata: {name: medtriage, namespace: medtriage}
+spec:
+  selector: {app: medtriage}
+  ports: [{port: 80, targetPort: 8080}]
+---
+# Synthetic patient traffic (~5 req/s) so Prometheus has data for canary analysis.
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: loadgen, namespace: medtriage}
+data:
+  loadgen.py: |
+    import json, random, time, urllib.request
+    MSGS = [
+        ("P1003", "my face is drooping and speech is slurred"),
+        ("P1002", "I have chest pain spreading to my arm"),
+        ("P1005", "took too many pills, possible overdose"),
+        ("P1001", "my ankles are more swollen than usual"),
+        ("P1004", "fever of 102 for three days"),
+        ("P1006", "rash on my arm that is getting bigger"),
+        ("P1007", "I just feel off today"),
+        ("P1008", "can I book my annual physical"),
+        ("P1009", "need a refill please"),
+        ("P1010", "what are your clinic hours on saturday"),
+    ]
+    URL = "http://medtriage.medtriage/triage"
+    while True:
+        pid, msg = random.choice(MSGS)
+        req = urllib.request.Request(URL, json.dumps({"patient_id": pid, "message": msg}).encode(),
+                                     {"content-type": "application/json"})
+        try:
+            urllib.request.urlopen(req, timeout=5).read()
+        except Exception as e:
+            print("err", e, flush=True)
+        time.sleep(0.2)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: loadgen, namespace: medtriage}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: loadgen}}
+  template:
+    metadata: {labels: {app: loadgen}}
+    spec:
+      containers:
+        - name: loadgen
+          image: medtriage:local
+          imagePullPolicy: Never
+          command: ["python", "/lg/loadgen.py"]
+          resources: {requests: {cpu: 50m, memory: 64Mi}}
+          volumeMounts: [{name: lg, mountPath: /lg}]
+      volumes: [{name: lg, configMap: {name: loadgen}}]

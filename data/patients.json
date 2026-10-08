@@ -1,0 +1,12 @@
+{
+  "P1001": {"age": 67, "conditions": ["CHF", "hypertension"], "high_risk": true},
+  "P1002": {"age": 34, "conditions": [], "high_risk": false},
+  "P1003": {"age": 72, "conditions": ["atrial fibrillation"], "high_risk": true},
+  "P1004": {"age": 55, "conditions": ["hypertension"], "high_risk": false},
+  "P1005": {"age": 8,  "conditions": ["asthma"], "high_risk": true},
+  "P1006": {"age": 45, "conditions": ["COPD"], "high_risk": true},
+  "P1007": {"age": 61, "conditions": ["type 1 diabetes"], "high_risk": true},
+  "P1008": {"age": 29, "conditions": ["depression"], "high_risk": false},
+  "P1009": {"age": 40, "conditions": [], "high_risk": false},
+  "P1010": {"age": 51, "conditions": [], "high_risk": false}
+}

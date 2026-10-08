@@ -1,0 +1,31 @@
+id,patient_id,message,expected_label
+m001,P1001,"I have crushing chest pain going down my left arm and I'm sweating",EMERGENCY
+m002,P1002,"Can I reschedule my annual physical to next Thursday?",ROUTINE
+m003,P1003,"My face is drooping on one side and my speech is slurred",EMERGENCY
+m004,P1004,"I need a refill on my lisinopril, pharmacy is CVS on Main",ADMIN
+m005,P1005,"Fever of 101.5 for two days and a bad cough",URGENT
+m006,P1001,"Question about my last bill, I was charged twice",ADMIN
+m007,P1006,"I can't breathe properly and my lips look blue",EMERGENCY
+m008,P1007,"My blood sugar has been over 300 all morning and I feel dizzy",URGENT
+m009,P1002,"Is it okay to take ibuprofen with my vitamins?",ROUTINE
+m010,P1008,"I took way too many of my sleeping pills on purpose",EMERGENCY
+m011,P1003,"Painful burning when I urinate since yesterday",URGENT
+m012,P1009,"Please send my vaccination record to my employer",ADMIN
+m013,P1010,"Mild sore throat for a day, no fever",ROUTINE
+m014,P1005,"Swollen painful calf after my long flight, feels warm",URGENT
+m015,P1004,"I'd like to book a follow-up with Dr. Patel",ROUTINE
+m016,P1006,"Worst headache of my life came on suddenly",EMERGENCY
+m017,P1007,"My insulin prescription needs prior authorization",ADMIN
+m018,P1008,"Rash on my arm that is spreading and hot to touch with fever",URGENT
+m019,P1009,"Can you update my address on file?",ADMIN
+m020,P1010,"Vomiting blood this morning",EMERGENCY
+m021,P1001,"New ankle swelling and I gained 4 pounds in 2 days",URGENT
+m022,P1002,"What are your clinic hours on Saturday?",ADMIN
+m023,P1003,"Slight back stiffness after gardening",ROUTINE
+m024,P1004,"I fainted at home and hit my head",EMERGENCY
+m025,P1005,"Ear pain and fever in my child since last night",URGENT
+m026,P1006,"Request copy of my MRI report",ADMIN
+m027,P1007,"Seasonal allergies acting up, want to discuss options",ROUTINE
+m028,P1008,"Sudden weakness in my right arm and leg",EMERGENCY
+m029,P1009,"Persistent diarrhea for 3 days and feeling lightheaded",URGENT
+m030,P1010,"Would like to schedule a skin check",ROUTINE

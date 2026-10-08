@@ -14,6 +14,13 @@ helm upgrade --install prometheus prometheus-community/prometheus -n monitoring 
   --set alertmanager.enabled=false --set prometheus-pushgateway.enabled=false \
   --set server.global.scrape_interval=15s --set server.persistentVolume.enabled=false
 
+PHASE=$(kubectl -n medtriage get rollout medtriage -o jsonpath='{.status.phase}' 2>/dev/null || true)
+if [[ "$PHASE" == "Progressing" || "$PHASE" == "Paused" ]]; then
+  echo "A canary is in progress (phase=$PHASE). Re-applying now would change it mid-flight."
+  echo "Wait for it to finish, or reset with: make mk-rollback"
+  exit 1
+fi
+
 minikube image build -t medtriage:local --build-opt=build-arg=GIT_SHA=local .
 # Re-running must not start a canary back to :local, so keep whatever image is already live.
 CUR=$(kubectl -n medtriage get rollout medtriage -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)

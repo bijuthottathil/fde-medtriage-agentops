@@ -1,13 +1,16 @@
-# Online health checks run during each canary step.
+# Online health checks run during each canary step, scoped to the CANARY pods only
+# (canary-hash = the new ReplicaSet's pod-template-hash, passed in by the Rollout). Unscoped
+# queries mixed in stable/old pods, so errors from an earlier aborted canary failed the next good one.
 # `or vector(0)`: the error counter has no series until the first error; empty result = analysis error.
 # clamp_min(..., 0.001) only guards divide-by-zero (clamping to 1 would skew ratios below 1 req/s).
-# Tip: once traffic is meaningful, filter queries by {app_version="<new sha>"} to judge the canary alone.
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
   name: triage-canary-health
   namespace: medtriage
 spec:
+  args:
+    - name: canary-hash
   metrics:
     - name: error-rate
       interval: 1m
@@ -18,8 +21,8 @@ spec:
         prometheus:
           address: http://prometheus-server.monitoring:80
           query: |
-            (sum(rate(triage_errors_total[5m])) or vector(0))
-            / clamp_min(sum(rate(triage_requests_total[5m])), 0.001)
+            (sum(rate(triage_errors_total{rollouts_pod_template_hash="{{args.canary-hash}}"}[5m])) or vector(0))
+            / clamp_min(sum(rate(triage_requests_total{rollouts_pod_template_hash="{{args.canary-hash}}"}[5m])), 0.001)
     - name: p95-latency
       interval: 1m
       count: 3
@@ -29,7 +32,7 @@ spec:
         prometheus:
           address: http://prometheus-server.monitoring:80
           query: |
-            histogram_quantile(0.95, sum(rate(triage_latency_seconds_bucket[5m])) by (le))
+            histogram_quantile(0.95, sum(rate(triage_latency_seconds_bucket{rollouts_pod_template_hash="{{args.canary-hash}}"}[5m])) by (le))
     - name: emergency-share-drift   # sudden drop in EMERGENCY share = possible under-triage
       interval: 2m
       count: 2
@@ -39,5 +42,5 @@ spec:
         prometheus:
           address: http://prometheus-server.monitoring:80
           query: |
-            sum(rate(triage_requests_total{label="EMERGENCY"}[30m]))
-            / clamp_min(sum(rate(triage_requests_total[30m])), 0.001)
+            sum(rate(triage_requests_total{label="EMERGENCY",rollouts_pod_template_hash="{{args.canary-hash}}"}[30m]))
+            / clamp_min(sum(rate(triage_requests_total{rollouts_pod_template_hash="{{args.canary-hash}}"}[30m])), 0.001)

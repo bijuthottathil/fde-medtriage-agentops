@@ -33,10 +33,10 @@ patches:
         value:
           - setWeight: 10
           - pause: {duration: 1m}
-          - analysis: {templates: [{templateName: triage-canary-health}]}
+          - analysis: {templates: [{templateName: triage-canary-health}], args: [{name: canary-hash, valueFrom: {podTemplateHashValue: Latest}}]}
           - setWeight: 50
           - pause: {duration: 1m}
-          - analysis: {templates: [{templateName: triage-canary-health}]}
+          - analysis: {templates: [{templateName: triage-canary-health}], args: [{name: canary-hash, valueFrom: {podTemplateHashValue: Latest}}]}
           - setWeight: 100
   # MLflow artifacts on local disk instead of S3.
   - target: {kind: Deployment, name: mlflow}

@@ -43,10 +43,10 @@ spec:
       steps:
         - setWeight: 10
         - pause: {duration: 5m}
-        - analysis: {templates: [{templateName: triage-canary-health}]}
+        - analysis: {templates: [{templateName: triage-canary-health}], args: [{name: canary-hash, valueFrom: {podTemplateHashValue: Latest}}]}
         - setWeight: 50
         - pause: {duration: 10m}
-        - analysis: {templates: [{templateName: triage-canary-health}]}
+        - analysis: {templates: [{templateName: triage-canary-health}], args: [{name: canary-hash, valueFrom: {podTemplateHashValue: Latest}}]}
         - setWeight: 100
 ---
 apiVersion: v1

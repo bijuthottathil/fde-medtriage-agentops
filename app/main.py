@@ -14,6 +14,9 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 app = FastAPI(title="MedTriage Agent")
 app.mount("/metrics", make_asgi_app())
+if config.ENV != "prod":  # KB explorer is a dev/staging tool; never expose the KB in prod
+    from .kb_ui import router as kb_router
+    app.include_router(kb_router)
 
 REQS = Counter("triage_requests_total", "Requests", ["label", "prompt_version", "app_version"])
 ERRS = Counter("triage_errors_total", "Errors", ["app_version"])

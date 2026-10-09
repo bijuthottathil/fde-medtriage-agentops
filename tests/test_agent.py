@@ -47,3 +47,12 @@ def test_v3_uses_protocols_and_v2_does_not():
     v3_tools = [s["tool"] for s in TriageAgent("v3").run(msg, "P1004")["trace"]["steps"]]
     v2_tools = [s["tool"] for s in TriageAgent("v2").run(msg, "P1004")["trace"]["steps"]]
     assert "retrieve_protocols" in v3_tools and "retrieve_protocols" not in v2_tools
+
+
+def test_kb_explorer_lists_and_searches_protocols():
+    client = TestClient(app)
+    assert client.get("/kb").status_code == 200
+    kb = client.get("/kb/api/protocols").json()
+    assert kb["count"] == len(kb["protocols"]) >= 10
+    top = client.get("/kb/api/search", params={"q": "swollen calf after a long flight"}).json()["results"][0]
+    assert top["id"] == "P-DVT"

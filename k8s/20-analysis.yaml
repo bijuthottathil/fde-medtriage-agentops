@@ -1,6 +1,7 @@
 # Online health checks run during each canary step, scoped to the CANARY pods only
 # (canary-hash = the new ReplicaSet's pod-template-hash, passed in by the Rollout). Unscoped
 # queries mixed in stable/old pods, so errors from an earlier aborted canary failed the next good one.
+# Failed requests are counted only in triage_errors_total, so error-rate divides by successes + errors.
 # `or vector(0)`: the error counter has no series until the first error; empty result = analysis error.
 # clamp_min(..., 0.001) only guards divide-by-zero (clamping to 1 would skew ratios below 1 req/s).
 apiVersion: argoproj.io/v1alpha1
@@ -22,7 +23,10 @@ spec:
           address: http://prometheus-server.monitoring:80
           query: |
             (sum(rate(triage_errors_total{rollouts_pod_template_hash="{{args.canary-hash}}"}[5m])) or vector(0))
-            / clamp_min(sum(rate(triage_requests_total{rollouts_pod_template_hash="{{args.canary-hash}}"}[5m])), 0.001)
+            / clamp_min(
+                (sum(rate(triage_requests_total{rollouts_pod_template_hash="{{args.canary-hash}}"}[5m])) or vector(0))
+              + (sum(rate(triage_errors_total{rollouts_pod_template_hash="{{args.canary-hash}}"}[5m])) or vector(0)),
+              0.001)
     - name: p95-latency
       interval: 1m
       count: 3

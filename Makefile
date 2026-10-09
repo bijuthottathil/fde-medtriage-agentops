@@ -10,7 +10,7 @@ docker:
 	docker build --build-arg GIT_SHA=$$(git rev-parse --short HEAD 2>/dev/null || echo local) -t medtriage .
 
 # ---- Local minikube (same Rollout/analysis/HPA as EKS; mock LLM) ----
-.PHONY: mk-up mk-release mk-bad-release mk-watch mk-rollback mk-ui mk-eval-mlflow mk-down
+.PHONY: mk-proof mk-proof-bad mk-up mk-release mk-bad-release mk-watch mk-rollback mk-ui mk-eval-mlflow mk-down
 mk-up:
 	scripts/minikube_up.sh
 mk-release:            # make mk-release TAG=v3
@@ -31,3 +31,7 @@ mk-eval-mlflow:        # needs `make mk-ui` running (MLflow on :5000)
 	MLFLOW_TRACKING_URI=http://localhost:5000 python -m eval.run_eval --prompt-version v2 --mlflow
 mk-down:
 	minikube delete
+mk-proof:              # recorded evidence of a healthy canary -> proof/canary-<tag>-*.md
+	python scripts/canary_proof.py --tag $(TAG)
+mk-proof-bad:          # recorded evidence of a broken canary being rolled back
+	python scripts/canary_proof.py --tag bad-$$(date +%H%M%S) --bad

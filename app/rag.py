@@ -72,3 +72,13 @@ def retrieve_protocols(query: str, k: int | None = None) -> list[dict]:
     return [{"id": i, "title": m["title"], "label": m["label"], "text": d, "distance": round(dist, 3)}
             for i, m, d, dist in zip(res["ids"][0], res["metadatas"][0], res["documents"][0],
                                      res["distances"][0])]
+
+
+def list_protocols() -> dict:
+    """Everything currently in the Chroma collection (for the /kb explorer)."""
+    coll = _get_collection()
+    d = coll.get(include=["documents", "metadatas"])
+    items = [{"id": i, "title": m["title"], "label": m["label"], "text": doc}
+             for i, m, doc in zip(d["ids"], d["metadatas"], d["documents"])]
+    version = items and d["metadatas"][0].get("kb_version")
+    return {"collection": COLLECTION, "count": coll.count(), "kb_version": version, "protocols": items}

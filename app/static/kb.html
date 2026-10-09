@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protocol Knowledge Base</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6b66; --line: #e3e2dd;
+    --accent: #2f5d8a; --emergency: #b42318; --urgent: #b54708; --routine: #2e6b3a; --admin: #475467;
+    --bar: #d6e4f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615; --panel: #1f1f1d; --ink: #ecebe6; --muted: #9b9a93; --line: #33322f;
+      --accent: #8db8e0; --emergency: #f97066; --urgent: #fdb022; --routine: #6ccf86; --admin: #98a2b3;
+      --bar: #2c3e50;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 20px 24px 12px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px;
+         padding: 20px 24px; max-width: 1280px; margin: 0 auto; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 16px; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+  h2 { margin: 0 0 12px; font-size: 15px; }
+  textarea, input, select { width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+         border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  textarea { min-height: 72px; resize: vertical; }
+  .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  .row > * { flex: 1 1 auto; width: auto; }
+  button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
+           background: var(--accent); color: var(--bg); cursor: pointer; flex: 0 0 auto; }
+  button.secondary { background: transparent; color: var(--accent); }
+  button:disabled { opacity: .5; cursor: wait; }
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .examples button { font-size: 12px; padding: 3px 9px; background: transparent; color: var(--muted);
+                     border-color: var(--line); }
+  .label { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .03em;
+           padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
+  .EMERGENCY { color: var(--emergency); } .URGENT { color: var(--urgent); }
+  .ROUTINE { color: var(--routine); } .ADMIN { color: var(--admin); }
+  .card { border-top: 1px solid var(--line); padding: 10px 0; }
+  .card:first-child { border-top: 0; }
+  .card .head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .card .id { font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 600; }
+  .card .text { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .sim { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .sim .track { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .sim .fill { height: 100%; background: var(--accent); }
+  .cited { font-size: 11px; font-weight: 600; color: var(--accent); }
+  .verdict { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; display: none; }
+  .verdict .big { font-size: 18px; font-weight: 700; }
+  .verdict .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .filters button { font-size: 12px; padding: 3px 10px; background: transparent; color: var(--muted); border-color: var(--line); }
+  .filters button.on { color: var(--ink); border-color: var(--ink); }
+  .empty { color: var(--muted); font-size: 13px; }
+  .err { color: var(--emergency); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Protocol Knowledge Base</h1>
+  <p id="info">Loading the Chroma collection…</p>
+</header>
+<main>
+  <section>
+    <h2>Search and triage a message</h2>
+    <textarea id="q" placeholder="Type a patient message…">my left calf is swollen and sore since my flight</textarea>
+    <div class="examples" id="examples"></div>
+    <div class="row">
+      <select id="patient" aria-label="Patient">
+        <option value="P1001">P1001 · 67 · CHF, hypertension</option>
+        <option value="P1002">P1002 · 34 · none</option>
+        <option value="P1003">P1003 · 72 · atrial fibrillation</option>
+        <option value="P1004" selected>P1004 · 55 · hypertension</option>
+        <option value="P1005">P1005 · 8 · asthma</option>
+        <option value="P1006">P1006 · 45 · COPD</option>
+        <option value="P1007">P1007 · 61 · type 1 diabetes</option>
+        <option value="P1008">P1008 · 29 · depression</option>
+      </select>
+      <button id="searchBtn" class="secondary">Search protocols</button>
+      <button id="triageBtn">Triage message</button>
+    </div>
+    <div class="verdict" id="verdict"></div>
+    <h2 style="margin-top:16px">Retrieved from Chroma</h2>
+    <div id="results"><p class="empty">Search to see which protocols match, ranked by similarity.</p></div>
+  </section>
+  <section>
+    <h2>All protocols in the collection</h2>
+    <div class="filters" id="filters"></div>
+    <div id="list"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const EXAMPLES = [
+  "my dad is confused and his left arm feels weird since lunch",
+  "gained 4 pounds since yesterday and my shoes feel tight",
+  "my 2 month old has a temperature of 100.8",
+  "sugar reading was 380 this morning",
+  "can you send my lab results to my new insurance",
+  "would like to schedule a skin check",
+];
+let all = [], filter = "ALL";
+
+function card(p, extra = "") {
+  return `<div class="card"><div class="head"><span class="id">${esc(p.id)}</span>
+    <span class="label ${esc(p.label)}">${esc(p.label)}</span><span>${esc(p.title)}</span>${extra}</div>
+    <div class="text">${esc(p.text.replace(/^[^.]*\.\s*/, ""))}</div></div>`;
+}
+
+function renderList() {
+  const labels = ["ALL", "EMERGENCY", "URGENT", "ROUTINE", "ADMIN"];
+  $("filters").innerHTML = labels.map((l) => {
+    const n = l === "ALL" ? all.length : all.filter((p) => p.label === l).length;
+    return `<button class="${l === filter ? "on" : ""}" data-l="${l}">${l} · ${n}</button>`;
+  }).join("");
+  $("filters").querySelectorAll("button").forEach((b) => b.onclick = () => { filter = b.dataset.l; renderList(); });
+  const shown = all.filter((p) => filter === "ALL" || p.label === filter);
+  $("list").innerHTML = shown.map((p) => card(p)).join("") || `<p class="empty">No protocols.</p>`;
+}
+
+function renderResults(results, cited = []) {
+  $("results").innerHTML = results.map((p) => {
+    const sim = Math.max(0, 1 - p.distance);
+    const bar = `<div class="sim"><div class="track"><div class="fill" style="width:${(sim * 100).toFixed(0)}%"></div></div>
+      similarity ${sim.toFixed(2)} · distance ${p.distance.toFixed(3)}</div>`;
+    const tag = cited.includes(p.id) ? `<span class="cited">✓ cited by model</span>` : "";
+    return card(p, tag).replace(/<\/div><\/div>$/, `</div>${bar}</div>`);
+  }).join("") || `<p class="empty">No results.</p>`;
+}
+
+async function getJSON(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+async function search() {
+  const q = $("q").value.trim(); if (!q) return;
+  $("verdict").style.display = "none";
+  try {
+    const d = await getJSON(`kb/api/search?k=5&q=${encodeURIComponent(q)}`);
+    renderResults(d.results);
+  } catch (e) { $("results").innerHTML = `<p class="err">Search failed: ${esc(e.message)}</p>`; }
+}
+
+async function triage() {
+  const q = $("q").value.trim(); if (!q) return;
+  const btn = $("triageBtn"); btn.disabled = true;
+  try {
+    const d = await getJSON("triage", {method: "POST", headers: {"content-type": "application/json"},
+      body: JSON.stringify({patient_id: $("patient").value, message: q})});
+    const step = (d.trace?.steps || []).find((s) => s.tool === "retrieve_protocols");
+    const t = d.trace || {};
+    $("verdict").style.display = "block";
+    $("verdict").innerHTML = `<div class="big ${esc(d.label)}">${esc(d.label)}</div>
+      <div>${esc(d.queue || "")}</div><div class="meta">${esc(d.rationale || "")}</div>
+      <div class="meta">prompt ${esc(t.prompt_version || "?")} · models ${esc((t.models_used || []).join(", ") || "none (red-flag rule)")}
+      · cost $${esc(t.cost_usd ?? 0)} · ${esc(t.latency_ms ?? "?")} ms
+      ${step ? "" : " · this prompt version does not use RAG"}</div>`;
+    if (step) renderResults(step.output, d.protocols || []);
+    else $("results").innerHTML = `<p class="empty">No retrieval: ${t.prompt_version === undefined ? "agent error" : "red-flag short-circuit or non-RAG prompt"}.</p>`;
+  } catch (e) {
+    $("verdict").style.display = "block"; $("verdict").innerHTML = `<p class="err">Triage failed: ${esc(e.message)}</p>`;
+  } finally { btn.disabled = false; }
+}
+
+$("examples").innerHTML = EXAMPLES.map((e) => `<button>${esc(e)}</button>`).join("");
+$("examples").querySelectorAll("button").forEach((b) => b.onclick = () => { $("q").value = b.textContent; search(); });
+$("searchBtn").onclick = search;
+$("triageBtn").onclick = triage;
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) search(); });
+
+getJSON("kb/api/protocols").then((d) => {
+  all = d.protocols;
+  $("info").textContent = `Chroma collection "${d.collection}" · ${d.count} documents · KB version ${d.kb_version} · embedded in this pod (in-memory)`;
+  renderList(); search();
+}).catch((e) => { $("info").innerHTML = `<span class="err">Could not load the collection: ${esc(e.message)}</span>`; });
+</script>
+</body>
+</html>

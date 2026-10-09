@@ -1,6 +1,6 @@
 # Prompt version pinned per environment. Changing this file = a prompt release
 # (goes through the same eval gate + canary as code).
 triage:
-  dev: v2
+  dev: v3
   staging: v2
   prod: v2

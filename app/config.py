@@ -22,6 +22,12 @@ PRICING = {
 
 APP_VERSION = os.getenv("APP_VERSION", "local")             # set to git SHA by CI
 
+# RAG over clinic protocols (used by prompt versions with use_protocols: true).
+PROTOCOLS_PATH = ROOT / "data" / "protocols" / "protocols.yaml"
+CHROMA_PATH = os.getenv("CHROMA_PATH")                      # unset = in-memory index
+RAG_TOP_K = int(os.getenv("RAG_TOP_K", "3"))
+RAG_THREADS = int(os.getenv("RAG_THREADS", "1"))          # ONNX threads per worker
+
 
 def prompt_version() -> str:
     override = os.getenv("PROMPT_VERSION")

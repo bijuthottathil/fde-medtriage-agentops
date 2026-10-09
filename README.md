@@ -67,6 +67,32 @@ flowchart LR
 
 ---
 
+## Protocol RAG with Chroma (prompt v3)
+
+Prompt `v3` grounds the model in the clinic's own triage protocols
+(`data/protocols/protocols.yaml`, synthetic demo content). The agent adds a
+`retrieve_protocols` step: Chroma returns the top-3 protocols, the model follows and cites
+them, and citations not actually retrieved are dropped.
+
+- **Embedded Chroma, no extra service.** Each pod indexes the ~15 protocols at startup
+  (~0.4s) with Chroma's local ONNX embedder (all-MiniLM-L6-v2) baked into the image, so it
+  works with no internet egress and a read-only root filesystem. Set `CHROMA_PATH` for an
+  on-disk index. Move to a Chroma server / OpenSearch / Bedrock Knowledge Bases only when the
+  corpus is large or edited outside releases.
+- **Protocol edits are releases.** The KB is in the image, so a protocol change goes through
+  the same eval gate → canary → auto-rollback as code and prompts.
+- **Ops lesson the canary caught:** the first RAG build failed canary analysis (p95 3.9s).
+  onnxruntime sized its thread pool to the node's 14 cores under a 1-CPU limit and was
+  throttled. Pinning to 1 thread (`RAG_THREADS`) plus warming the index before readiness
+  took in-pod p95 from 7.2s to 0.39s under concurrency.
+
+| Bedrock eval (Haiku 4.5 / Sonnet 4.6) | Emergency recall | Accuracy | Under-triaged | Avg cost/msg |
+|---|---|---|---|---|
+| v2 (no RAG) | 1.00 | 0.97 | 1 | $0.00063 |
+| v3 (Chroma RAG) | 1.00 | **1.00** | 0 | $0.00101 |
+
+`v3` is pinned for `dev` only in `prompts/registry.yaml`; `prod` stays on `v2` until promoted.
+
 ## Where each of the 13 items lives
 
 | # | Item | Implementation |

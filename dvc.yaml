@@ -6,6 +6,7 @@ stages:
     deps:
       - data/patient_messages.csv
       - data/patients.json
+      - data/protocols/
       - prompts/
       - app/
       - eval/run_eval.py

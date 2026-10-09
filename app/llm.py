@@ -30,7 +30,8 @@ class LLMClient:
 
     # --- Offline deterministic model so CI/evals run without secrets ---------
     def _mock(self, prompt, user_msg, model_id):
-        text = user_msg.lower()
+        # Keyword-match the patient's words only, not the retrieved protocol text.
+        text = user_msg.split("\n\nRelevant clinic protocols:")[0].lower()
         for label in LABELS:  # priority order: most urgent first
             if any(k in text for k in prompt["mock_hints"].get(label, [])):
                 conf = 0.9 if "sonnet" in model_id else 0.8

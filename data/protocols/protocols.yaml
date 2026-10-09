@@ -1,0 +1,101 @@
+# Clinic triage protocols — the RAG knowledge base (indexed into Chroma at startup).
+# SYNTHETIC demo content written for this project. NOT clinical guidance.
+# A real deployment would load the customer's licensed, clinician-approved protocols.
+version: 2026-10-08.2
+protocols:
+  - id: P-STROKE
+    title: Possible stroke
+    label: EMERGENCY
+    text: >
+      New face droop, arm or leg weakness or numbness on one side, slurred or confused speech,
+      sudden confusion, sudden vision loss or loss of balance. Higher risk with atrial
+      fibrillation or age over 60. Time critical: give 911 script, do not wait for callback.
+  - id: P-CHEST
+    title: Chest pain or pressure
+    label: EMERGENCY
+    text: >
+      Chest pain, pressure or tightness, especially spreading to arm, jaw or back, or with
+      sweating, nausea or shortness of breath. Treat as cardiac until proven otherwise.
+  - id: P-BREATHING
+    title: Breathing difficulty
+    label: EMERGENCY
+    text: >
+      Severe shortness of breath, cannot speak full sentences, lips turning blue, or asthma or
+      COPD attack not relieved by rescue inhaler. Children with asthma and retractions: 911.
+  - id: P-SELFHARM
+    title: Suicidal thoughts, self-harm or overdose
+    label: EMERGENCY
+    text: >
+      Any statement of wanting to die, hopelessness combined with a plan or means (saving or
+      stockpiling pills, weapons), intentional overdose or taking too many pills. Stay
+      connected, give crisis line and 911 script. Never route to a queue.
+  - id: P-SYNCOPE
+    title: Fainting or head injury
+    label: EMERGENCY
+    text: >
+      Fainting or passing out, or head injury with vomiting, confusion, or while on blood
+      thinners (anticoagulants such as warfarin or apixaban).
+  - id: P-HEADACHE
+    title: Sudden severe headache
+    label: EMERGENCY
+    text: >
+      Sudden "worst headache of my life" or thunderclap headache reaching peak within minutes,
+      or headache with stiff neck and fever.
+  - id: P-GIBLEED
+    title: Gastrointestinal bleeding
+    label: EMERGENCY
+    text: >
+      Vomiting blood or material like coffee grounds, black tarry stools, or large amounts of
+      blood in stool, especially with dizziness.
+  - id: P-INFANT-FEVER
+    title: Fever in a young infant
+    label: EMERGENCY
+    text: >
+      Infant under 3 months old with temperature of 100.4 F (38 C) or higher. Needs same-hour
+      emergency evaluation even if the baby looks well.
+  - id: P-CHF
+    title: Heart failure fluid gain
+    label: URGENT
+    text: >
+      Patient with heart failure (CHF) gaining more than 2-3 pounds in a day or 5 pounds in a
+      week, new ankle or leg swelling, shoes or rings feeling tight. Same-day nurse callback.
+      Escalate to EMERGENCY if short of breath at rest or cannot lie flat.
+  - id: P-GLUCOSE
+    title: Uncontrolled blood sugar
+    label: URGENT
+    text: >
+      Blood sugar repeatedly over 300 or under 70, ketones present, or diabetic patient
+      vomiting and unable to keep fluids down. Confusion or unresponsiveness is EMERGENCY.
+  - id: P-DVT
+    title: Possible blood clot in leg (DVT)
+    label: URGENT
+    text: >
+      One leg swollen, warm, red or painful in the calf, especially after travel, surgery or
+      immobility. Same-day evaluation. Chest pain or breathlessness with it is EMERGENCY.
+  - id: P-INFECTION
+    title: Fever or infection signs
+    label: URGENT
+    text: >
+      Fever over 101 F for more than 2 days, burning urination with fever or back pain,
+      spreading redness or warmth around a wound, or fever in a high-risk patient.
+  - id: P-DEHYDRATION
+    title: Dehydration
+    label: URGENT
+    text: >
+      Vomiting or diarrhea for more than 24 hours, very little urine, dizziness or
+      lightheadedness on standing.
+  - id: P-MINOR
+    title: Minor or non-urgent symptoms
+    label: ROUTINE
+    text: >
+      Mild cold or sore throat without fever under 7 days, seasonal allergies, mild muscle or
+      joint stiffness after activity, questions about over-the-counter medicines. Also ALL
+      appointment requests: booking, scheduling or rescheduling a visit, follow-up, annual
+      physical or screening (these go to the scheduling queue, not the front desk).
+  - id: P-ADMIN
+    title: Administrative requests
+    label: ADMIN
+    text: >
+      Prescription refills of stable long-term medicines, medical records or lab result
+      copies, billing and insurance questions, prior authorizations, forms, clinic hours,
+      address changes. Appointment booking is NOT admin: use P-MINOR (ROUTINE).

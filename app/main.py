@@ -20,8 +20,17 @@ ERRS = Counter("triage_errors_total", "Errors", ["app_version"])
 LAT = Histogram("triage_latency_seconds", "Latency", ["app_version"])
 COST = Counter("triage_llm_cost_usd_total", "LLM spend", ["model"])
 ESC = Counter("triage_escalations_total", "Small->large model escalations")
+CACHE_HITS = Counter("triage_llm_cache_hits_total", "LLM calls served from cache (not billed)")
 
 agent = TriageAgent()
+
+
+@app.on_event("startup")
+def warm_rag():
+    # uvicorn accepts traffic (and /healthz passes) only after startup finishes
+    if agent.use_protocols:
+        from .rag import warm
+        warm()
 
 
 class TriageIn(BaseModel):
@@ -48,6 +57,7 @@ def triage(body: TriageIn):
     REQS.labels(out["label"], t["prompt_version"], t["app_version"]).inc()
     if len(t["models_used"]) > 1:
         ESC.inc()
+    CACHE_HITS.inc(t["cache_hits"])
     if t["models_used"]:
         COST.labels(t["models_used"][-1]).inc(t["cost_usd"])
     # Structured trace log (ship to CloudWatch/OpenSearch). No message text = no PHI in logs.

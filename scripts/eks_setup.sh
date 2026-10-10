@@ -28,8 +28,10 @@ helm upgrade --install prometheus prometheus-community/prometheus -n monitoring 
   --set alertmanager.enabled=false --set prometheus-pushgateway.enabled=false \
   --set server.global.scrape_interval=15s --set server.persistentVolume.enabled=false
 
-# The HPA needs metrics-server; Auto Mode doesn't include it.
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.7.2/components.yaml
+# The HPA needs metrics-server. Recent eksctl installs it as an EKS add-on; applying the
+# upstream manifest on top of that breaks the add-on, so only install it when it's missing.
+kubectl -n kube-system get deploy metrics-server >/dev/null 2>&1 || \
+  kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.7.2/components.yaml
 
 # Default StorageClass (Auto Mode has none) for MLflow's volume, and the internal ALB class.
 kubectl apply -f - <<'EOF'
@@ -105,8 +107,14 @@ aws iam attach-role-policy --role-name medtriage-gh-deploy \
   --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
 aws iam put-role-policy --role-name medtriage-gh-deploy --policy-name eks-describe \
   --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"eks:DescribeCluster","Resource":"*"}]}'
-aws eks create-access-entry --cluster-name "$CLUSTER" --region "$AWS_REGION" \
-  --principal-arn "arn:aws:iam::$ACCOUNT_ID:role/medtriage-gh-deploy" >/dev/null 2>&1 || true
+# A just-created role can take a few seconds to become visible to EKS (IAM is eventually
+# consistent), so retry until the access entry exists.
+for i in 1 2 3 4 5 6; do
+  aws eks describe-access-entry --cluster-name "$CLUSTER" --region "$AWS_REGION" \
+    --principal-arn "arn:aws:iam::$ACCOUNT_ID:role/medtriage-gh-deploy" >/dev/null 2>&1 && break
+  aws eks create-access-entry --cluster-name "$CLUSTER" --region "$AWS_REGION" \
+    --principal-arn "arn:aws:iam::$ACCOUNT_ID:role/medtriage-gh-deploy" >/dev/null 2>&1 || sleep 10
+done
 # Demo scope: cluster admin. For a real customer, scope to the medtriage/mlops namespaces.
 aws eks associate-access-policy --cluster-name "$CLUSTER" --region "$AWS_REGION" \
   --principal-arn "arn:aws:iam::$ACCOUNT_ID:role/medtriage-gh-deploy" \

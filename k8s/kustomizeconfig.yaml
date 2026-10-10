@@ -1,0 +1,9 @@
+# Teach kustomize that an Argo Rollout references ConfigMaps (it only knows built-in kinds),
+# so the generated medtriage-config-<hash> name is rewritten inside the Rollout too.
+nameReference:
+  - kind: ConfigMap
+    version: v1
+    fieldSpecs:
+      - {kind: Rollout, path: spec/template/spec/containers/envFrom/configMapRef/name}
+      - {kind: Rollout, path: spec/template/spec/containers/env/valueFrom/configMapKeyRef/name}
+      - {kind: Rollout, path: spec/template/spec/volumes/configMap/name}

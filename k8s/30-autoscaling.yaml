@@ -17,7 +17,8 @@ spec:
   behavior:
     scaleDown: {stabilizationWindowSeconds: 300}
 ---
-# Node autoscaling + cost: Karpenter on Spot first, On-Demand fallback, Graviton allowed.
+# Node autoscaling + cost: EKS Auto Mode (managed Karpenter), Spot first, On-Demand fallback.
+# amd64 only because CD builds an amd64 image (build multi-arch to allow Graviton).
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
@@ -31,11 +32,11 @@ spec:
           values: ["spot", "on-demand"]
         - key: kubernetes.io/arch
           operator: In
-          values: ["arm64", "amd64"]
-        - key: karpenter.k8s.aws/instance-category
+          values: ["amd64"]
+        - key: eks.amazonaws.com/instance-category
           operator: In
           values: ["c", "m"]
-      nodeClassRef: {group: karpenter.k8s.aws, kind: EC2NodeClass, name: default}
+      nodeClassRef: {group: eks.amazonaws.com, kind: NodeClass, name: default}
   limits: {cpu: "64"}
   disruption:
     consolidationPolicy: WhenEmptyOrUnderutilized

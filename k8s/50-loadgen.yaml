@@ -1,19 +1,15 @@
-# Service over ALL app pods (stable + canary). Without an ALB, Argo's basic canary splits
-# traffic by pod count, so this is the entry point that shows the real mix.
-apiVersion: v1
-kind: Service
-metadata: {name: medtriage, namespace: medtriage}
-spec:
-  selector: {app: medtriage}
-  ports: [{port: 80, targetPort: 8080}]
----
-# Synthetic patient traffic (~5 req/s) so Prometheus has data for canary analysis.
+# Synthetic patient traffic so Prometheus has data for canary analysis. Without traffic the
+# analysis can't measure the canary (p95 has no value, emergency share is 0) and every release
+# rolls back. Sends through the `medtriage` Service, so the canary gets its pod-count share.
+# Cost on Bedrock is near zero: 3 of the 10 messages hit the red-flag rule (no model call) and
+# the rest are answered from each pod's LLM cache after the first call.
+# Once real patient traffic flows, scale this to 0: kubectl -n medtriage scale deploy/loadgen --replicas=0
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: loadgen, namespace: medtriage}
 data:
   loadgen.py: |
-    import json, random, time, urllib.request
+    import json, os, random, time, urllib.request
     MSGS = [
         ("P1003", "my face is drooping and speech is slurred"),
         ("P1002", "I have chest pain spreading to my arm"),
@@ -35,7 +31,7 @@ data:
             urllib.request.urlopen(req, timeout=5).read()
         except Exception as e:
             print("err", e, flush=True)
-        time.sleep(0.2)
+        time.sleep(float(os.getenv("INTERVAL_SECONDS", "1.0")))
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -48,9 +44,10 @@ spec:
     spec:
       containers:
         - name: loadgen
-          image: medtriage:local
-          imagePullPolicy: Never
+          image: python:3.12-slim
           command: ["python", "/lg/loadgen.py"]
-          resources: {requests: {cpu: 50m, memory: 64Mi}}
+          env: [{name: INTERVAL_SECONDS, value: "1.0"}]   # ~1 req/s
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {cpu: 200m, memory: 128Mi}}
+          securityContext: {runAsNonRoot: true, runAsUser: 65534, readOnlyRootFilesystem: true, allowPrivilegeEscalation: false}
           volumeMounts: [{name: lg, mountPath: /lg}]
       volumes: [{name: lg, configMap: {name: loadgen}}]

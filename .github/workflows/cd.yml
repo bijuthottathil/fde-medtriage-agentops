@@ -43,16 +43,22 @@ jobs:
 
       - name: Install kubectl-argo-rollouts
         run: |
-          curl -sLO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+          curl -sLO https://github.com/argoproj/argo-rollouts/releases/download/v1.7.2/kubectl-argo-rollouts-linux-amd64
           chmod +x kubectl-argo-rollouts-linux-amd64 && sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
 
+      # Render the real image and account into the manifests BEFORE applying, so the Rollout
+      # never sees the IMAGE_TAG placeholder. Changing the image in the Rollout is what starts
+      # the canary; applying the same image again is a no-op.
       - name: Apply manifests & start canary
         env:
           REG: ${{ steps.ecr.outputs.registry }}
           SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           aws eks update-kubeconfig --name $CLUSTER --region $AWS_REGION
-          kubectl apply -f k8s/00-namespace-config.yaml -f k8s/20-analysis.yaml -f k8s/30-autoscaling.yaml
-          kubectl apply -f k8s/10-rollout.yaml   # first deploy only creates; later applies are no-ops for image
-          kubectl argo rollouts set image medtriage app=$REG/$ECR_REPO:$SHA -n medtriage
-          kubectl argo rollouts status medtriage -n medtriage --timeout 30m
+          kubectl kustomize k8s \
+            | sed -e "s#image: ACCOUNT_ID\.dkr\.ecr\.us-east-1\.amazonaws\.com/medtriage:IMAGE_TAG#image: $REG/$ECR_REPO:$SHA#" \
+                  -e "s#ACCOUNT_ID#$ACCOUNT_ID#g" > rendered.yaml
+          if grep -nE 'ACCOUNT_ID|IMAGE_TAG' rendered.yaml; then echo "unfilled placeholder"; exit 1; fi
+          kubectl apply -f rendered.yaml
+          kubectl argo rollouts status medtriage -n medtriage --timeout 40m

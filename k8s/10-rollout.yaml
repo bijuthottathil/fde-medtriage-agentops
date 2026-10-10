@@ -1,5 +1,9 @@
 # Canary deployment with Argo Rollouts: 10% -> analysis -> 50% -> analysis -> 100%.
 # If the AnalysisTemplate fails, Argo automatically ROLLS BACK to the stable ReplicaSet.
+# Traffic is split by POD COUNT (no ALB traffic routing): the `medtriage` Service and the
+# Ingress send to all pods, so the canary's share = canary pods / total pods (with 3 pods,
+# "10%" is 1 pod, about 33%). This works the same on minikube and on any EKS ALB controller.
+# For exact weights, add trafficRouting.alb (needs the AWS Load Balancer Controller).
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -36,10 +40,6 @@ spec:
     canary:
       canaryService: medtriage-canary
       stableService: medtriage-stable
-      trafficRouting:
-        alb:
-          ingress: medtriage
-          servicePort: 80
       steps:
         - setWeight: 10
         - pause: {duration: 5m}
@@ -49,6 +49,15 @@ spec:
         - analysis: {templates: [{templateName: triage-canary-health}], args: [{name: canary-hash, valueFrom: {podTemplateHashValue: Latest}}]}
         - setWeight: 100
 ---
+# Entry point over ALL app pods (stable + canary). The Ingress and the load generator use it.
+apiVersion: v1
+kind: Service
+metadata: {name: medtriage, namespace: medtriage}
+spec:
+  selector: {app: medtriage}
+  ports: [{port: 80, targetPort: 8080}]
+---
+# Argo pins these to the stable / canary pods (for debugging and direct checks).
 apiVersion: v1
 kind: Service
 metadata: {name: medtriage-stable, namespace: medtriage}
@@ -78,4 +87,4 @@ spec:
         paths:
           - path: /
             pathType: Prefix
-            backend: {service: {name: medtriage-stable, port: {name: use-annotation}}}
+            backend: {service: {name: medtriage, port: {number: 80}}}

@@ -1,9 +1,27 @@
 # Base = the EKS manifests. Overlays patch only what differs per environment.
+# Placeholders ACCOUNT_ID and IMAGE_TAG are filled in by CD (.github/workflows/cd.yml).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+configurations:
+  - kustomizeconfig.yaml
 resources:
   - 00-namespace-config.yaml
   - 10-rollout.yaml
   - 20-analysis.yaml
   - 30-autoscaling.yaml
   - 40-mlflow.yaml
+  - 50-loadgen.yaml
+
+# App config. Generated with a content hash in its name (medtriage-config-<hash>), so changing
+# any value changes the Rollout's pod template: a config change (provider, model IDs,
+# escalation threshold) is a release and goes through the canary like code.
+configMapGenerator:
+  - name: medtriage-config
+    namespace: medtriage
+    literals:
+      - APP_ENV=prod                     # picks the prompt version from prompts/registry.yaml
+      - LLM_PROVIDER=bedrock             # bedrock | anthropic | mock
+      - SMALL_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0   # Bedrock inference profiles
+      - LARGE_MODEL_ID=us.anthropic.claude-sonnet-4-6
+      - ESCALATE_BELOW_CONFIDENCE=0.7
+      - AWS_REGION=us-east-1

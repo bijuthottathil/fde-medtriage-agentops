@@ -1,28 +1,55 @@
-# Minimal MLflow tracking server on EKS (experiment tracking + model/prompt registry).
-# For production use RDS for the backend store; S3 holds artifacts.
+# MLflow tracking server on EKS (experiment tracking + prompt/model registry).
+# - Artifacts (eval reports, prompt files) go to S3 through the server, using the IRSA role
+#   medtriage-mlflow-s3. CD replaces ACCOUNT_ID; the bucket is medtriage-<account id>.
+# - Run history is SQLite on a persistent volume, so it survives pod restarts. Needs a default
+#   StorageClass (EKS Auto Mode has none: create one, see installation.md). For a real customer,
+#   use RDS Postgres as the backend store instead.
+# - Reachable only inside the cluster: kubectl -n mlops port-forward svc/mlflow 5000:5000
 apiVersion: v1
 kind: Namespace
 metadata: {name: mlops}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mlflow
+  namespace: mlops
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/medtriage-mlflow-s3
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: mlflow-data, namespace: mlops}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 5Gi}}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata: {name: mlflow, namespace: mlops}
 spec:
   replicas: 1
+  strategy: {type: Recreate}          # the volume is ReadWriteOnce
   selector: {matchLabels: {app: mlflow}}
   template:
     metadata: {labels: {app: mlflow}}
     spec:
-      serviceAccountName: default   # annotate with an IRSA role that can write the S3 bucket
+      serviceAccountName: mlflow
       containers:
         - name: mlflow
           image: ghcr.io/mlflow/mlflow:v2.16.2
-          args: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000",
-                 "--backend-store-uri", "sqlite:////mlflow/mlflow.db",
-                 "--artifacts-destination", "s3://YOUR-BUCKET/mlflow-artifacts"]
+          # boto3 is needed for S3 artifacts and isn't in the base image.
+          command: ["sh", "-c"]
+          args:
+            - pip install --quiet --no-cache-dir boto3 &&
+              exec mlflow server --host 0.0.0.0 --port 5000
+              --backend-store-uri sqlite:////mlflow/mlflow.db
+              --artifacts-destination s3://medtriage-ACCOUNT_ID/mlflow-artifacts
           ports: [{containerPort: 5000}]
+          resources: {requests: {cpu: 100m, memory: 512Mi}, limits: {memory: 1Gi}}
+          readinessProbe: {httpGet: {path: /health, port: 5000}, periodSeconds: 10}
           volumeMounts: [{name: data, mountPath: /mlflow}]
-      volumes: [{name: data, emptyDir: {}}]
+      volumes: [{name: data, persistentVolumeClaim: {claimName: mlflow-data}}]
 ---
 apiVersion: v1
 kind: Service

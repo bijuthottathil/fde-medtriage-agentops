@@ -1,10 +1,20 @@
 # Local minikube overlay: same Rollout / analysis / HPA as EKS, minus AWS-only pieces
-# (ECR, IRSA, ALB, Karpenter, Bedrock, S3). Apply with: kubectl apply -k k8s-minikube
+# (ECR, IRSA, ALB, Karpenter, Bedrock, S3). Rendered and applied by scripts/minikube_up.sh.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../k8s
-  - local.yaml
+
+# Offline mock LLM, no AWS credentials needed.
+configMapGenerator:
+  - name: medtriage-config
+    namespace: medtriage
+    behavior: merge
+    literals:
+      - APP_ENV=dev
+      - LLM_PROVIDER=mock
+      - SMALL_MODEL_ID=claude-haiku-5-5
+      - LARGE_MODEL_ID=claude-sonnet-5-5
 
 images:
   - name: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/medtriage
@@ -12,22 +22,14 @@ images:
     newTag: local
 
 patches:
-  # Offline mock LLM, no AWS credentials needed.
-  - target: {kind: ConfigMap, name: medtriage-config}
-    patch: |-
-      - {op: replace, path: /data/APP_ENV, value: dev}
-      - {op: replace, path: /data/LLM_PROVIDER, value: mock}
-      - {op: replace, path: /data/SMALL_MODEL_ID, value: claude-haiku-5-5}
-      - {op: replace, path: /data/LARGE_MODEL_ID, value: claude-sonnet-5-5}
   # No IRSA locally.
-  - target: {kind: ServiceAccount, name: medtriage}
+  - target: {kind: ServiceAccount}
     patch: |-
       - {op: remove, path: /metadata/annotations}
-  # Use the image built inside minikube; replica-based canary (no ALB); short pauses for demos.
+  # Use the image built inside minikube; short pauses for demos (EKS: 5m and 10m).
   - target: {kind: Rollout, name: medtriage}
     patch: |-
       - {op: add, path: /spec/template/spec/containers/0/imagePullPolicy, value: Never}
-      - {op: remove, path: /spec/strategy/canary/trafficRouting}
       - op: replace
         path: /spec/strategy/canary/steps
         value:
@@ -38,14 +40,16 @@ patches:
           - pause: {duration: 1m}
           - analysis: {templates: [{templateName: triage-canary-health}], args: [{name: canary-hash, valueFrom: {podTemplateHashValue: Latest}}]}
           - setWeight: 100
-  # MLflow artifacts on local disk instead of S3.
+  # MLflow artifacts on the local volume instead of S3.
   - target: {kind: Deployment, name: mlflow}
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/args
-        value: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000",
-                "--backend-store-uri", "sqlite:////mlflow/mlflow.db",
-                "--artifacts-destination", "/mlflow/artifacts"]
+        value: ["exec mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:////mlflow/mlflow.db --artifacts-destination /mlflow/artifacts"]
+  # More synthetic traffic (~5 req/s) so 1-minute analysis windows have enough data.
+  - target: {kind: Deployment, name: loadgen}
+    patch: |-
+      - {op: replace, path: /spec/template/spec/containers/0/env/0/value, value: "0.2"}
   # AWS-only resources.
   - patch: |-
       $patch: delete

@@ -4,3 +4,6 @@ eval_report*.json
 mlruns/
 .pytest_cache/
 .venv/
+
+# Claude Code: personal permissions stay local; .claude/commands/ is shared
+.claude/settings.local.json

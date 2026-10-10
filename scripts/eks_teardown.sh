@@ -11,6 +11,10 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 gh variable set DEPLOY_ENABLED --repo "$GH_REPO" --body false
 # Delete the Ingress first so the ALB it created is removed with it.
 kubectl delete ingress medtriage -n medtriage --ignore-not-found --wait=true
+# Delete MLflow's volume claim (after its pod) so the EBS volume is deleted, not orphaned:
+# deleting the cluster alone leaves dynamically provisioned volumes behind.
+kubectl delete deploy mlflow -n mlops --ignore-not-found --wait=true
+kubectl delete pvc mlflow-data -n mlops --ignore-not-found --wait=true
 eksctl delete cluster --name "$CLUSTER" --region "$AWS_REGION" --wait
 aws ecr delete-repository --repository-name medtriage --force --region "$AWS_REGION"
 aws s3 rb "s3://medtriage-$ACCOUNT_ID" --force

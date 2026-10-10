@@ -38,7 +38,7 @@ spec:
           query: |
             histogram_quantile(0.95, sum(rate(triage_latency_seconds_bucket{rollouts_pod_template_hash="{{args.canary-hash}}"}[5m])) by (le))
     - name: emergency-share-drift   # sudden drop in EMERGENCY share = possible under-triage
-      interval: 2m
+      interval: 1m
       count: 2
       successCondition: result[0] > 0.03
       failureLimit: 1

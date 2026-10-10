@@ -41,11 +41,14 @@ spec:
       canaryService: medtriage-canary
       stableService: medtriage-stable
       steps:
+        # Pauses are short to keep a release to ~10 minutes. For a real clinic, lengthen them
+        # (e.g. 15-30m, or hours) to catch slow-onset problems; a hard failure still aborts
+        # at the first analysis either way.
         - setWeight: 10
-        - pause: {duration: 5m}
+        - pause: {duration: 2m}
         - analysis: {templates: [{templateName: triage-canary-health}], args: [{name: canary-hash, valueFrom: {podTemplateHashValue: Latest}}]}
         - setWeight: 50
-        - pause: {duration: 10m}
+        - pause: {duration: 2m}
         - analysis: {templates: [{templateName: triage-canary-health}], args: [{name: canary-hash, valueFrom: {podTemplateHashValue: Latest}}]}
         - setWeight: 100
 ---

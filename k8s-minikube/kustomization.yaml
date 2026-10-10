@@ -26,7 +26,7 @@ patches:
   - target: {kind: ServiceAccount}
     patch: |-
       - {op: remove, path: /metadata/annotations}
-  # Use the image built inside minikube; short pauses for demos (EKS: 5m and 10m).
+  # Use the image built inside minikube; 1-minute pauses (EKS: 2m).
   - target: {kind: Rollout, name: medtriage}
     patch: |-
       - {op: add, path: /spec/template/spec/containers/0/imagePullPolicy, value: Never}

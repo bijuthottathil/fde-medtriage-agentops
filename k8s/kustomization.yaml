@@ -20,7 +20,7 @@ configMapGenerator:
     namespace: medtriage
     literals:
       - APP_ENV=prod                     # picks the prompt version from prompts/registry.yaml
-      - LLM_PROVIDER=mock                # bedrock | anthropic | mock (mock for the first EKS deploy)
+      - LLM_PROVIDER=bedrock             # bedrock | anthropic | mock
       - SMALL_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0   # Bedrock inference profiles
       - LARGE_MODEL_ID=us.anthropic.claude-sonnet-4-6
       - ESCALATE_BELOW_CONFIDENCE=0.7

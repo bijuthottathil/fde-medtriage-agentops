@@ -94,15 +94,25 @@ OIDC_ARN="arn:aws:iam::$ACCOUNT_ID:oidc-provider/token.actions.githubusercontent
 aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$OIDC_ARN" >/dev/null 2>&1 || \
   aws iam create-open-id-connect-provider --url https://token.actions.githubusercontent.com \
     --client-id-list sts.amazonaws.com >/dev/null
+# GitHub's token subject is either "repo:<owner>/<repo>:..." or, for repos using immutable
+# subjects, "repo:<owner>@<id>/<repo>@<id>:...". Trust both, scoped to this repo's prod environment.
+SUBS="\"repo:$GH_REPO:environment:prod\""
+PREFIX=$(gh api "repos/$GH_REPO/actions/oidc/customization/sub" --jq '.sub_claim_prefix // empty' 2>/dev/null || true)
+if [[ -n "$PREFIX" && "$PREFIX" != "repo:$GH_REPO" ]]; then
+  SUBS="$SUBS,\"$PREFIX:environment:prod\""
+fi
 cat > "$WORK/gh-trust.json" <<EOF
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow",
  "Principal":{"Federated":"$OIDC_ARN"},
  "Action":"sts:AssumeRoleWithWebIdentity",
  "Condition":{"StringEquals":{"token.actions.githubusercontent.com:aud":"sts.amazonaws.com",
-   "token.actions.githubusercontent.com:sub":"repo:$GH_REPO:environment:prod"}}}]}
+   "token.actions.githubusercontent.com:sub":[$SUBS]}}}]}
 EOF
-aws iam get-role --role-name medtriage-gh-deploy >/dev/null 2>&1 || \
+if aws iam get-role --role-name medtriage-gh-deploy >/dev/null 2>&1; then
+  aws iam update-assume-role-policy --role-name medtriage-gh-deploy --policy-document "file://$WORK/gh-trust.json"
+else
   aws iam create-role --role-name medtriage-gh-deploy --assume-role-policy-document "file://$WORK/gh-trust.json" >/dev/null
+fi
 aws iam attach-role-policy --role-name medtriage-gh-deploy \
   --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
 aws iam put-role-policy --role-name medtriage-gh-deploy --policy-name eks-describe \
